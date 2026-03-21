@@ -140,6 +140,16 @@ if st.session_state.user:
     role = st.session_state.user.get("role", "user")
     if role in ("expert", "admin"):
         st.info(f"Đã đăng nhập với vai trò: **{role}**")
+
+        # ── Debug: xem secrets đang đọc được gì ──
+        with st.expander("🔧 Debug (Admin)"):
+            allowed = st.secrets.get("ALLOWED_EMAILS", "(chưa có)")
+            api_key_preview = st.secrets.get("GEMINI_API_KEY", "(chưa có)")
+            if api_key_preview and len(api_key_preview) > 10:
+                api_key_preview = api_key_preview[:12] + "..."
+            st.markdown(f"**GEMINI_API_KEY:** `{api_key_preview}`")
+            st.markdown(f"**ALLOWED_EMAILS:** `{allowed}`")
+
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("💬 Bắt đầu trị liệu", type="primary"):

@@ -197,8 +197,12 @@ if user_input:
     provider, api_key, model = get_provider_config()
 
     if not api_key:
+        # Debug: xem secrets thực sự đọc được gì
         with st.chat_message("assistant"):
-            st.error("⚠️ Chưa có API key. Vui lòng cấu hình GEMINI_API_KEY trong Streamlit Secrets.")
+            st.error("⚠️ Chưa có API key hoặc GEMINI_API_KEY không đúng.")
+            debug_val = st.secrets.get("GEMINI_API_KEY", "(rỗng)")
+            st.code(f"DEBUG — GEMINI_API_KEY đang đọc được: '{debug_val[:15]}...'")
+            st.caption("Nếu thấy '(rỗng)' hoặc không có gì → Secrets chưa đúng. Vui lòng kiểm tra lại Streamlit Cloud Settings → Secrets.")
         st.stop()
 
     with st.chat_message("assistant"):
