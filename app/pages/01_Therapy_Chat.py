@@ -21,7 +21,12 @@ from app.state.w7_synthesize import (
     persist_homework,
     build_session_summary,
 )
-from app.api.llm import build_therapy_system_prompt, call_model_therapy
+from app.api.llm import (
+    build_framework_context,
+    build_system_prompt,
+    call_model_therapy,
+    summarize_history,
+)
 
 st.set_page_config(page_title="Buổi Trị Liệu", page_icon="🧠")
 
@@ -187,13 +192,21 @@ if user_input:
     st.session_state.chat_history.append({"role": "user", "content": user_input})
 
     # ── Build system prompt ─────────────────────────────────────────────────
-    system_prompt = build_therapy_system_prompt(
+    # ── Load framework context once per session ─────────────────────────
+    if "framework_context" not in st.session_state:
+        st.session_state.framework_context = build_framework_context()
+
+    # ── Build minimal system prompt ──────────────────────────────────
+    prev_summary = summarize_history(st.session_state.chat_history)
+    system_prompt = build_system_prompt(
         w_step=machine.current_step,
         mode=machine.mode,
         channel_context=machine.channel_state,
+        framework_context=st.session_state.framework_context,
+        prev_summary=prev_summary,
     )
 
-    # ── LLM call ────────────────────────────────────────────────────────────
+    # ── LLM call ────────────────────────────────────────────────────
     provider, api_key, model = get_provider_config()
 
     if not api_key:
@@ -206,7 +219,6 @@ if user_input:
         with st.spinner("Đang xử lý…"):
             try:
                 response = call_model_therapy(
-                    provider=provider,
                     api_key=api_key,
                     model=model,
                     system=system_prompt,

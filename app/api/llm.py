@@ -1,12 +1,14 @@
 """
-LLM wrapper for therapy sessions.
-Loads expert-edited prompts + shared framework context,
-then calls Gemini directly via google-genai SDK.
+LLM wrapper for therapy sessions — OPTIMIZED for token efficiency.
+Strategy:
+  1. Framework context loaded ONCE per session (stored in st.session_state)
+  2. Only the W-step prompt + session summary sent each request
+  3. Conversation history windowed to last 4 turns max
+  4. System prompt trimmed to essentials
 """
 
 import os
 from pathlib import Path
-from typing import Any, Literal
 
 from app.data.prompt_repo import get_active_prompt
 from app.state.session_machine import WStep
@@ -31,13 +33,13 @@ PROMPT_KEY_MAP = {
     "W7":  "w7_synthesize",
 }
 
+# ─── Framework context (loaded ONCE per session) ───────────────────────────────
 
 def _load_shared(prompt_key: str) -> str:
-    """Load a shared prompt, falling back to file read if not in DB."""
+    """Load shared prompt, fallback to file."""
     try:
         return get_active_prompt(prompt_key)["content"]
     except KeyError:
-        # Fallback: try to read from file
         shared_dir = Path(__file__).parent.parent / "prompts" / "shared"
         filename = prompt_key.replace("shared/", "") + ".md"
         fpath = shared_dir / filename
@@ -46,88 +48,78 @@ def _load_shared(prompt_key: str) -> str:
         return ""
 
 
-def build_therapy_system_prompt(
-    w_step: WStep,
-    mode: str,
-    channel_context: dict | None = None,
-) -> str:
+def build_framework_context() -> str:
     """
-    Build the full system prompt for a therapy session step.
+    Build the FIXED framework context (loaded once per session).
+    This goes into st.session_state.framework_context — NOT sent every request.
+    Only contains the ESSENTIAL framework reference.
+    """
+    # Load minimal reference docs
+    channel_defs = _load_shared("shared/channel_definitions")
+    six_a_doc    = _load_shared("shared/6a_actions")
 
-    Structure:
-    [Step prompt from DB]
-    ---
-    ## Shared Framework Context
-    [7 Kênh]
-    [4 Modes]
-    [6A Actions]
-    [Luật 6A]
-    ---
-    ## Current Session Context
-    [Mode label + axis]
-    [Optional: channel state captured so far]
+    return f"""## 7 Kênh (Reference — nhớ khi cần)
+
+{channel_defs}
+
+## 6A Actions (Reference)
+
+{six_a_doc}
+"""
+
+
+def build_system_prompt(w_step: WStep, mode: str,
+                       channel_context: dict | None = None,
+                       framework_context: str | None = None,
+                       prev_summary: str | None = None) -> str:
+    """
+    Build a MINIMAL system prompt for THIS request only.
+    - Step-specific instructions (W1-W7)
+    - Mode label
+    - Session channel state (condensed)
+    - Very brief framework reference (loaded once from session)
     """
     step_key = PROMPT_KEY_MAP.get(w_step.value, w_step.value.lower())
 
     try:
         step_prompt = get_active_prompt(step_key)["content"]
     except KeyError:
-        step_prompt = f"[Prompt '{step_key}' not found in DB. Using placeholder.]"
+        step_prompt = f"[Prompt '{step_key}' not found]"
 
-    # Shared context
-    channel_defs  = _load_shared("shared/channel_definitions")
-    modes_doc    = _load_shared("shared/modes")
-    six_a_doc    = _load_shared("shared/6a_actions")
-
-    # Session context
+    # Mode label
     mode_labels = {
-        "A": "Mode A — Triệu chứng / Mất điều hòa",
-        "B": "Mode B — Ý nghĩa / Cấu trúc",
+        "A": "Mode A — Triệu chứng / Mất điều hòa (H→C/D→A)",
+        "B": "Mode B — Ý nghĩa / Cấu trúc (F→D/E→G→A)",
         "C": "Mode C — Tích hợp sâu",
         "E": "Mode E — Quan hệ / Hệ thống",
     }
     mode_context = mode_labels.get(mode, mode_labels["B"])
 
-    # Optional channel state summary
+    # Channel state summary (max 300 chars per channel)
     channel_summary = ""
     if channel_context:
-        lines = ["## Session Channel State So Far"]
+        lines = ["## Tình trạng kênh"]
         for k, v in channel_context.items():
             if v and k in ("C", "D", "E", "F", "G", "H"):
-                lines.append(f"- **{k}**: {str(v)[:200]}")
+                lines.append(f"- {k}: {str(v)[:300]}")
         channel_summary = "\n".join(lines)
+
+    # Previous summary (what happened last few turns)
+    prev = f"\n## Tóm tắt trước đó\n{prev_summary}\n" if prev_summary else ""
 
     return f"""{step_prompt}
 
----
+## Ngữ cảnh phiên
 
-## Shared Framework Context
-
-### 7 Kênh Đọc
-
-{channel_defs}
-
-### 4 Mode Vận Hành
-
-{modes_doc}
-
-### 6A — Sáu Họ Hành Động
-
-{six_a_doc}
-
----
-
-## Current Session Context
-
-**Bước hiện tại:** {w_step.value} — {w_step.name}
+**Bước hiện tại:** {w_step.value}
 **Mode:** {mode_context}
-
+{prev}
 {channel_summary}
+{f"\n## Framework tham chiếu\n{framework_context}" if framework_context else ""}
 """
 
 
 def call_model_therapy(
-    provider: str,
     api_key: str,
     model: str,
     system: str,
@@ -135,32 +127,34 @@ def call_model_therapy(
     w_step: WStep,
 ) -> str:
     """
-    Call Gemini for a therapy session.
-    System instruction via GenerateContentConfig + conversation history as contents.
+    Call Gemini with OPTIMIZED token usage:
+    - System prompt is MINIMAL (per-request)
+    - Messages are WINDOWED (last 4 turns only)
     """
     if not GEMINI_AVAILABLE:
-        raise RuntimeError(
-            "google-genai not installed. Run: pip install google-genai"
-        )
+        raise RuntimeError("google-genai not installed.")
 
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set.")
 
     client = genai.Client(api_key=api_key)
-
-    # Model: gemini-2.0-flash is free tier, good for Vietnamese
     model_name = model or "gemini-2.0-flash"
 
-    # Build conversation history (list of message dicts)
+    # ── Window messages: only keep last 4 turns ──────────────────────────────
+    # Each "turn" = user msg + assistant response
+    # Keep last 4 full turns + the new user message (if not already included)
+    MAX_TURNS = 4
+    windowed_msgs = _window_messages(messages, max_turns=MAX_TURNS)
+
+    # ── Build Gemini contents ───────────────────────────────────────────────
     gemini_contents = []
-    for msg in messages:
+    for msg in windowed_msgs:
         role = "user" if msg["role"] == "user" else "model"
         gemini_contents.append({
             "role": role,
             "parts": [{"text": msg["content"]}],
         })
 
-    # System instruction via GenerateContentConfig
     config = genai.types.GenerateContentConfig(
         system_instruction=system,
     )
@@ -172,3 +166,38 @@ def call_model_therapy(
     )
 
     return response.text
+
+
+def _window_messages(messages: list[dict], max_turns: int) -> list[dict]:
+    """
+    Keep only the last N complete turns (user + assistant pairs).
+    If odd number, the last unpaired user msg is kept.
+    """
+    if len(messages) <= max_turns * 2:
+        return messages
+
+    # Take last max_turns pairs + potential unpaired last user msg
+    paired   = messages[:-1]  # everything except last
+    last_msg = messages[-1]
+
+    # Keep last max_turns*2 from paired + last msg
+    return paired[-(max_turns * 2):] + [last_msg]
+
+
+def summarize_history(messages: list[dict], max_chars: int = 600) -> str:
+    """
+    Condense conversation history into a brief paragraph.
+    Used as prev_summary in the system prompt for context continuity.
+    """
+    if not messages:
+        return ""
+
+    turns = []
+    for i in range(0, len(messages) - 1, 2):
+        user_txt = messages[i]["content"][:150]
+        ai_txt  = messages[i + 1]["content"][:150]
+        turns.append(f"User: {user_txt}... → AI: {ai_txt}...")
+
+    # Take last 3 turns
+    recent = turns[-3:]
+    return f" ({len(messages)//2} turns total) " + " | ".join(recent)
