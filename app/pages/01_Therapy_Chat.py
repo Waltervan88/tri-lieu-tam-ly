@@ -3,6 +3,7 @@ Tri-Lieu Therapy Chat — W1-W7 session loop.
 Gate D → State Machine → LLM → W7 Synthesis.
 """
 
+import os
 import streamlit as st
 import sys
 import uuid
@@ -43,11 +44,9 @@ if not user.get("active", True):
 
 # ─── Provider config ─────────────────────────────────────────────────────────
 
-PROVIDER  = os.getenv("ANTHROPIC_API_KEY", "").strip() and "anthropic" or "openai"
-API_KEY   = os.getenv("ANTHROPIC_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
-MODEL     = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514").strip()
-
-import os  # noqa — needed for provider detection above
+PROVIDER  = "gemini"
+API_KEY   = os.getenv("GEMINI_API_KEY", "").strip()
+MODEL     = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
 # ─── Session state init ─────────────────────────────────────────────────────
 
