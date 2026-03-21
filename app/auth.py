@@ -44,12 +44,35 @@ def login(email: str, password: str) -> Optional[dict]:
     return {k: v for k, v in user.items() if k != "password_hash"}
 
 
+def is_email_allowed(email: str, allowed_list: list[str] | None) -> bool:
+    """
+    Check if email is in the allowed list.
+    allowed_list can come from st.secrets or be hardcoded.
+    Returns True if no whitelist is set (open registration).
+    """
+    if not allowed_list:
+        return True  # No whitelist → open registration
+    email_lower = email.lower()
+    return any(
+        allowed.lower() in email_lower or email_lower in allowed.lower()
+        for allowed in allowed_list
+    )
+
+
 def register(email: str, name: str, password: str,
-             role: str = "user") -> dict:
+             role: str = "user",
+             allowed_emails: list[str] | None = None) -> dict:
     """
     Create a new user account.
-    Raises ValueError if email already exists.
+    Raises ValueError if email already exists or not in allowed list.
     """
+    # Check whitelist
+    if allowed_emails and not is_email_allowed(email, allowed_emails):
+        raise ValueError(
+            "Email này chưa được cấp phép đăng ký. "
+            "Vui lòng liên hệ quản trị viên."
+        )
+
     existing = get_user_by_email(email)
     if existing:
         raise ValueError(f"Tài khoản với email '{email}' đã tồn tại.")

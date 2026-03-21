@@ -107,7 +107,15 @@ with tab2:
                 st.error("Mật khẩu phải có ít nhất 8 ký tự.")
             else:
                 try:
-                    user = register(email, name, password, role="user")
+                    # Lấy danh sách email được phép từ Secrets
+                    allowed_raw = st.secrets.get("ALLOWED_EMAILS", "")
+                    allowed_list = [
+                        e.strip()
+                        for e in str(allowed_raw).split(",")
+                        if e.strip()
+                    ] if allowed_raw else None
+                    user = register(email, name, password, role="user",
+                                  allowed_emails=allowed_list)
                     st.session_state.user = user
                     st.success("Tài khoản đã tạo thành công!")
                     st.rerun()
