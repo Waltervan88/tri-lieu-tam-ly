@@ -28,6 +28,26 @@ from app.api.llm import (
     summarize_history,
 )
 
+# ─── Helpers (must be defined BEFORE use in Streamlit) ────────────────────────
+
+def _extract_channel_data(response: str, w_step: WStep) -> dict:
+    """
+    Simple extraction of channel data from LLM response.
+    """
+    channel_map = {
+        WStep.W2: "C",
+        WStep.W3: "D",
+        WStep.W4: "E",
+        WStep.W4b: "F",
+        WStep.W5: "G",
+        WStep.W6: "H",
+    }
+    channel = channel_map.get(w_step)
+    if channel:
+        return {channel: response[:500]}
+    return {}
+
+
 st.set_page_config(page_title="Buổi Trị Liệu", page_icon="🧠")
 
 # ─── Auth guard ───────────────────────────────────────────────────────────────
@@ -276,25 +296,3 @@ if user_input:
 
     st.rerun()
 
-
-# ─── Helper: extract channel data ─────────────────────────────────────────────
-
-def _extract_channel_data(response: str, w_step: WStep) -> dict:
-    """
-    Simple extraction of channel data from LLM response.
-    For advanced use: call a separate LLM to extract structured JSON.
-    """
-    # Map W-step to channel
-    channel_map = {
-        WStep.W2: "C",
-        WStep.W3: "D",
-        WStep.W4: "E",
-        WStep.W4b: "F",
-        WStep.W5: "G",
-        WStep.W6: "H",
-    }
-    channel = channel_map.get(w_step)
-    if channel:
-        # Simple: use last 500 chars as captured data
-        return {channel: response[:500]}
-    return {}

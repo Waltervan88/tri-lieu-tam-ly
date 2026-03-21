@@ -279,14 +279,14 @@ def update_session_output(
     conn.close()
 
 
-def trigger_gate_d(session_id: str) -> None:
-    conn = get_db()
-    conn.execute(
-        "UPDATE therapy_sessions SET gate_d_triggered=1 WHERE id=?",
-        (session_id,),
-    )
-    conn.commit()
-    conn.close()
+def trigger_gate_d(user_id: str, session_id: str, reason: str,
+                 trigger_text: str = "") -> None:
+    """
+    Hard-stop Gate D: lock user + save audit event.
+    Signature must match the call from session_machine.py.
+    """
+    lock_user(user_id, locked_by="gate_d")
+    save_gate_d_event(session_id, user_id, reason, trigger_text)
 
 
 def get_session(session_id: str) -> dict | None:

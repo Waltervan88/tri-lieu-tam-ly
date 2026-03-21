@@ -127,9 +127,9 @@ class TherapySessionMachine:
             json.dumps(indicators, ensure_ascii=False),
         )
 
-    def lock_due_to_gate_d(self) -> None:
-        """Mark session as Gate D triggered."""
-        trigger_gate_d(self.session_id)
+    def lock_due_to_gate_d(self, reason: str = "gate_d", trigger_text: str = "") -> None:
+        """Mark session as Gate D triggered and lock user."""
+        trigger_gate_d(self.user_id, self.session_id, reason, trigger_text)
 
     def is_done(self) -> bool:
         return self.current_step == WStep.DONE
