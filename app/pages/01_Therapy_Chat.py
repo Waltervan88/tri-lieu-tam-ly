@@ -216,6 +216,10 @@ if user_input:
     if "framework_context" not in st.session_state:
         st.session_state.framework_context = build_framework_context()
 
+    # ── Load user progress once per session (refreshes on new session start)
+    if "cached_user_progress" not in st.session_state:
+        st.session_state.cached_user_progress = db.load_user_progress(user["id"])
+
     # ── Build minimal system prompt ──────────────────────────────────
     prev_summary = summarize_history(st.session_state.chat_history)
     system_prompt = build_system_prompt(
@@ -224,6 +228,7 @@ if user_input:
         channel_context=machine.channel_state,
         framework_context=st.session_state.framework_context,
         prev_summary=prev_summary,
+        user_progress=st.session_state.cached_user_progress,
     )
 
     # ── LLM call ────────────────────────────────────────────────────

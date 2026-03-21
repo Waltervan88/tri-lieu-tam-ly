@@ -71,11 +71,13 @@ def build_framework_context() -> str:
 def build_system_prompt(w_step: WStep, mode: str,
                        channel_context: dict | None = None,
                        framework_context: str | None = None,
-                       prev_summary: str | None = None) -> str:
+                       prev_summary: str | None = None,
+                       user_progress: dict | None = None) -> str:
     """
     Build a MINIMAL system prompt for THIS request only.
     - Step-specific instructions (W1-W7)
     - Mode label
+    - Longitudinal user context (from user_progress table)
     - Session channel state (condensed)
     - Very brief framework reference (loaded once from session)
     """
@@ -94,6 +96,32 @@ def build_system_prompt(w_step: WStep, mode: str,
         "E": "Mode E — Quan hệ / Hệ thống",
     }
     mode_context = mode_labels.get(mode, mode_labels["B"])
+
+    # Longitudinal user context — from user_progress table
+    user_ctx = ""
+    if user_progress:
+        h_val = user_progress.get("h_presence", 5.0)
+        channel_notes = []
+        channel_labels = {
+            "c_raw":       "Hiện tượng (C)",
+            "d_loops":     "Dòng & Vòng lặp (D)",
+            "e_layers":    "Tầng & Bậc (E)",
+            "f_patterns":  "Khuôn lệch (F)",
+            "g_awareness": "Tỉnh biết (G)",
+        }
+        for key, label in channel_labels.items():
+            val = user_progress.get(key, "")
+            if val:
+                channel_notes.append(f"- {label}: {val[:120]}...")
+
+        if channel_notes or h_val:
+            notes_block = "\n".join(channel_notes)
+            user_ctx = f"""
+## Ngữ cảnh người dùng (lịch sử)
+H-presence hiện tại: {h_val}/10
+{notes_block}
+*Thông tin trên phản ánh xu hướng chung. Đánh giá linh hoạt theo hiện tại.*
+"""
 
     # Channel state summary (max 300 chars per channel)
     channel_summary = ""
@@ -115,7 +143,7 @@ def build_system_prompt(w_step: WStep, mode: str,
 **Mode:** {mode_context}
 {prev}
 {channel_summary}
-{f"\n## Framework tham chiếu\n{framework_context}" if framework_context else ""}
+{user_ctx}{f"\n## Framework tham chiếu\n{framework_context}" if framework_context else ""}
 """
 
 
