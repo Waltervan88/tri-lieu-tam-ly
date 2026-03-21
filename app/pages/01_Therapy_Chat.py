@@ -9,7 +9,7 @@ import uuid
 import json
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import app.data.db as db
 from app.auth import get_user_from_session
