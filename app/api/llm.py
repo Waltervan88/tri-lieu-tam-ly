@@ -136,7 +136,7 @@ def call_model_therapy(
 ) -> str:
     """
     Call Gemini for a therapy session.
-    Builds conversation history + system instruction, then calls Gemini directly.
+    System instruction via GenerateContentConfig + conversation history as contents.
     """
     if not GEMINI_AVAILABLE:
         raise RuntimeError(
@@ -146,35 +146,29 @@ def call_model_therapy(
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set.")
 
-    # Configure Gemini client
     client = genai.Client(api_key=api_key)
 
-    # Build Gemini-compatible message history
-    # Gemini uses: parts (text) + role (user/model)
-    # System instruction is passed separately via contents=[]
-    gemini_messages = []
+    # Model: gemini-2.0-flash is free tier, good for Vietnamese
+    model_name = model or "gemini-2.0-flash"
 
-    # System instruction as a model instruction
-    system_part = {"text": system}
-
-    # Convert message history
+    # Build conversation history (list of message dicts)
+    gemini_contents = []
     for msg in messages:
         role = "user" if msg["role"] == "user" else "model"
-        gemini_messages.append({
+        gemini_contents.append({
             "role": role,
             "parts": [{"text": msg["content"]}],
         })
 
-    # Call Gemini with system instruction
-    # gemini-2.0-flash is free tier, good for Vietnamese
-    model_name = model or "gemini-2.0-flash"
+    # System instruction via GenerateContentConfig
+    config = genai.types.GenerateContentConfig(
+        system_instruction=system,
+    )
 
     response = client.models.generate_content(
         model=model_name,
-        contents=gemini_messages,
-        config={
-            "system_instruction": {"parts": [{"text": system}]},
-        },
+        contents=gemini_contents,
+        config=config,
     )
 
     return response.text
