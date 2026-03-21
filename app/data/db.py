@@ -492,6 +492,69 @@ def get_gate_d_events(limit: int = 50) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ─── User Profile & Chat History helpers ──────────────────────────────────────
+
+def get_all_users() -> list[dict]:
+    """Return all active users for the profile selector dropdown."""
+    conn = get_db()
+    cur = conn.execute(
+        """SELECT id, email, name, role, created_at, active
+           FROM users WHERE active=1 ORDER BY created_at DESC"""
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_all_sessions(user_id: str) -> list[dict]:
+    """Return ALL sessions for a user with no limit — for chat history."""
+    conn = get_db()
+    cur = conn.execute(
+        """SELECT id, started_at, ended_at, current_w, current_mode,
+                  gate_d_triggered, session_summary
+           FROM therapy_sessions
+           WHERE user_id=? ORDER BY started_at DESC""",
+        (user_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_session_summaries(user_id: str) -> list[dict]:
+    """Return session history oldest→newest for trend analysis."""
+    conn = get_db()
+    cur = conn.execute(
+        """SELECT id, started_at, ended_at, current_w, current_mode,
+                  session_summary, homework_json
+           FROM therapy_sessions
+           WHERE user_id=? ORDER BY started_at ASC""",
+        (user_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_homework_stats(user_id: str) -> dict:
+    """Return homework completion stats for a user."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM homework WHERE user_id=?", (user_id,))
+    total = cur.fetchone()[0]
+    cur.execute(
+        "SELECT COUNT(*) FROM homework WHERE user_id=? AND completed=1", (user_id,)
+    )
+    completed = cur.fetchone()[0]
+    conn.close()
+    return {
+        "total": total,
+        "completed": completed,
+        "pending": total - completed,
+        "completion_rate": round(completed / total * 100, 1) if total > 0 else 0.0,
+    }
+
+
 # ─── Dashboard helpers ───────────────────────────────────────────────────────
 
 def get_dashboard_stats() -> dict:
