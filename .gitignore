@@ -10,6 +10,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
+# Sensitive credentials (NEVER commit this)
+CREDENTIALS.md
+
 # UN-IGNORE app/data/ so Python packages work
 # (but still ignore any .db files inside it)
 !app/data/

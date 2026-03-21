@@ -198,7 +198,7 @@ if user_input:
 
     if not api_key:
         with st.chat_message("assistant"):
-            st.error("⚠️ Chưa có API key. Vui lòng cấu hình ANTHROPIC_API_KEY hoặc OPENAI_API_KEY.")
+            st.error("⚠️ Chưa có API key. Vui lòng cấu hình GEMINI_API_KEY trong Streamlit Secrets.")
         st.stop()
 
     with st.chat_message("assistant"):

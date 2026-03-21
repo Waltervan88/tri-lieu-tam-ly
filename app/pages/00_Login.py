@@ -82,11 +82,6 @@ with tab1:
                 else:
                     st.error("Email hoặc mật khẩu không đúng.")
 
-    st.markdown("---")
-    st.markdown("**Demo accounts:**")
-    st.code("Expert: expert@demo.local / expert123")
-    st.code("Admin:  admin@demo.local / admin123")
-
 
 with tab2:
     with st.form("register_form"):
@@ -106,16 +101,32 @@ with tab2:
             elif len(password) < 8:
                 st.error("Mật khẩu phải có ít nhất 8 ký tự.")
             else:
+                # ── Whitelist check ──
                 try:
-                    # Lấy danh sách email được phép từ Secrets
                     allowed_raw = st.secrets.get("ALLOWED_EMAILS", "")
-                    allowed_list = [
-                        e.strip()
+                    allowed_emails = [
+                        e.strip().lower()
                         for e in str(allowed_raw).split(",")
                         if e.strip()
-                    ] if allowed_raw else None
-                    user = register(email, name, password, role="user",
-                                  allowed_emails=allowed_list)
+                    ]
+                    # Nếu có whitelist thì kiểm tra
+                    if allowed_emails:
+                        email_lower = email.strip().lower()
+                        if not any(
+                            allowed.lower() in email_lower
+                            for allowed in allowed_emails
+                        ):
+                            st.error(
+                                "⚠️ Email này chưa được cấp phép đăng ký. "
+                                "Vui lòng liên hệ quản trị viên."
+                            )
+                            st.stop()
+                except Exception:
+                    pass  # Nếu lỗi secrets, cho phép đăng ký
+
+                # ── Đăng ký ──
+                try:
+                    user = register(email, name, password, role="user")
                     st.session_state.user = user
                     st.success("Tài khoản đã tạo thành công!")
                     st.rerun()
