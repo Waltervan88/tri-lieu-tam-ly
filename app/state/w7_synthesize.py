@@ -28,12 +28,12 @@ def generate_6a_and_homework(
     Returns:
       (actions_6a, homework, indicators)
     """
-    h        = float(channel_state.get("H", channel_state.get("h_presence", 5.0)))
-    g        = channel_state.get("G", channel_state.get("g_awareness", "")) or ""
-    f_khat   = int(channel_state.get("f_khat_chhet", 0))
-    d_loops  = channel_state.get("D", channel_state.get("d_loops", "")) or ""
-    f_patterns = channel_state.get("F", channel_state.get("f_patterns", "")) or ""
-    c_raw    = channel_state.get("C", channel_state.get("c_raw", "")) or ""
+    h        = float(channel_state.get("H") or channel_state.get("h_presence") or 5.0)
+    g        = channel_state.get("G") or channel_state.get("g_awareness") or ""
+    f_khat   = int(channel_state.get("f_khat_chhet") or 0)
+    d_loops  = channel_state.get("D") or channel_state.get("d_loops") or ""
+    f_patterns = channel_state.get("F") or channel_state.get("f_patterns") or ""
+    c_raw    = channel_state.get("C") or channel_state.get("c_raw") or ""
 
     actions_6a: List[Tuple[str, str, str]] = []  # (action_letter, dose, description)
 
@@ -154,10 +154,10 @@ def build_session_summary(
     indicators: dict,
 ) -> str:
     """Build a one-paragraph session summary for the user."""
-    h = float(channel_state.get("H", 5.0))
-    c = (channel_state.get("C", "") or "")[:100]
-    d = (channel_state.get("D", "") or "")[:80]
-    f_khat = int(channel_state.get("f_khat_chhet", 0))
+    h = float(channel_state.get("H") or 5.0)
+    c = (channel_state.get("C") or "")[:100]
+    d = (channel_state.get("D") or "")[:80]
+    f_khat = int(channel_state.get("f_khat_chhet") or 0)
     f_status = {0: "khớp", 1: "kẹt", 2: "trói"}.get(f_khat, "chưa rõ")
 
     summary = (
