@@ -45,8 +45,8 @@ if not user.get("active", True):
 # ─── Provider config ─────────────────────────────────────────────────────────
 
 PROVIDER  = "gemini"
-API_KEY   = os.getenv("GEMINI_API_KEY", "").strip()
-MODEL     = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+API_KEY   = str(st.secrets.get("GEMINI_API_KEY", "")).strip()
+MODEL     = str(st.secrets.get("GEMINI_MODEL", "gemini-2.0-flash")).strip()
 
 # ─── Session state init ─────────────────────────────────────────────────────
 
@@ -76,9 +76,8 @@ def start_new_session():
 
 def get_provider_config():
     """Return (provider, api_key, model) tuple for Gemini."""
-    # Primary: Gemini (Google AI)
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    api_key = str(st.secrets.get("GEMINI_API_KEY", "")).strip()
+    model   = str(st.secrets.get("GEMINI_MODEL", "gemini-2.0-flash")).strip()
     return "gemini", api_key, model
 
 
