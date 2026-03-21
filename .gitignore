@@ -1,6 +1,16 @@
+# Ignore root data/ (contains .db files)
 data/
 *.db
+
+# Env files
 .env
+
+# Python cache
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# UN-IGNORE app/data/ so Python packages work
+# (but still ignore any .db files inside it)
+!app/data/
+app/data/*.db
