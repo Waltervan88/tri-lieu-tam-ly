@@ -14,7 +14,7 @@ from app.state.session_machine import WStep
 # ─── Gemini SDK ────────────────────────────────────────────────────────────────
 
 try:
-    import google.genai as genai
+    from google import genai
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False

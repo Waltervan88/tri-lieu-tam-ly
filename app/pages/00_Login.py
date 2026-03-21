@@ -143,12 +143,10 @@ if st.session_state.user:
 
         # ── Debug: xem secrets đang đọc được gì ──
         with st.expander("🔧 Debug (Admin)"):
-            allowed = st.secrets.get("ALLOWED_EMAILS", "(chưa có)")
-            api_key_preview = st.secrets.get("GEMINI_API_KEY", "(chưa có)")
-            if api_key_preview and len(api_key_preview) > 10:
-                api_key_preview = api_key_preview[:12] + "..."
-            st.markdown(f"**GEMINI_API_KEY:** `{api_key_preview}`")
-            st.markdown(f"**ALLOWED_EMAILS:** `{allowed}`")
+            allowed = st.secrets.get("ALLOWED_EMAILS", "")
+            api_key_set = bool(st.secrets.get("GEMINI_API_KEY", "").strip())
+            st.markdown(f"**GEMINI_API_KEY:** {'✅ Đã đặt' if api_key_set else '❌ Chưa đặt'}")
+            st.markdown(f"**ALLOWED_EMAILS:** `{'Có whitelist' if allowed else 'Mở (không whitelist)'}` — `{allowed}`")
 
         col1, col2, col3 = st.columns(3)
         with col1:
