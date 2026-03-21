@@ -93,3 +93,17 @@ def format_safety_message(lang: str = "vi") -> str:
     if lang == "en":
         return SAFETY_MESSAGE_EN.strip()
     return SAFETY_MESSAGE_VN.strip()
+
+
+def trigger_gate_d(user_id: str, session_id: str, reason: str,
+                    trigger_text: str = "") -> None:
+    """
+    Hard-stop: lock user + save audit row.
+    Uses lazy import to avoid circular dependency with app.data.db.
+    """
+    # Lazy import to avoid circular dependency
+    from app.data.db import lock_user, save_gate_d_event
+    from datetime import datetime
+
+    lock_user(user_id, locked_by="gate_d")
+    save_gate_d_event(session_id, user_id, reason, trigger_text)
